@@ -1,0 +1,84 @@
+﻿namespace ForgeECS
+{
+  public readonly ref struct Iteration<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>
+    where T1 : struct, IValueComponent
+    where T2 : struct, IValueComponent
+    where T3 : struct, IValueComponent
+    where T4 : struct, IValueComponent
+    where T5 : struct, IValueComponent
+    where T6 : struct, IValueComponent
+    where T7 : struct, IValueComponent
+    where T8 : struct, IValueComponent
+    where T9 : struct, IValueComponent
+    where T10 : struct, IValueComponent
+  {
+    private readonly World _world;
+    private readonly int _entityId;
+    private readonly ComponentCache<T1> _cache1;
+    private readonly ComponentCache<T2> _cache2;
+    private readonly ComponentCache<T3> _cache3;
+    private readonly ComponentCache<T4> _cache4;
+    private readonly ComponentCache<T5> _cache5;
+    private readonly ComponentCache<T6> _cache6;
+    private readonly ComponentCache<T7> _cache7;
+    private readonly ComponentCache<T8> _cache8;
+    private readonly ComponentCache<T9> _cache9;
+    private readonly ComponentCache<T10> _cache10;
+    
+    public ref T1 C1 => ref _cache1.Get(_entityId);
+    public ref T2 C2 => ref _cache2.Get(_entityId);
+    public ref T3 C3 => ref _cache3.Get(_entityId);
+    public ref T4 C4 => ref _cache4.Get(_entityId);
+    public ref T5 C5 => ref _cache5.Get(_entityId);
+    public ref T6 C6 => ref _cache6.Get(_entityId);
+    public ref T7 C7 => ref _cache7.Get(_entityId);
+    public ref T8 C8 => ref _cache8.Get(_entityId);
+    public ref T9 C9 => ref _cache9.Get(_entityId);
+    public ref T10 C10 => ref _cache10.Get(_entityId);
+    public Entity Entity => _world.Entities[_entityId];
+
+    public Iteration(int entityId, World world, ComponentCache<T1> cache1, ComponentCache<T2> cache2, ComponentCache<T3> cache3, ComponentCache<T4> cache4, ComponentCache<T5> cache5, ComponentCache<T6> cache6, ComponentCache<T7> cache7, ComponentCache<T8> cache8, ComponentCache<T9> cache9,  ComponentCache<T10> cache10)
+    {
+      _entityId = entityId;
+      _world = world;
+      _cache1 = cache1;
+      _cache2 = cache2;
+      _cache3 = cache3;
+      _cache4 = cache4;
+      _cache5 = cache5;
+      _cache6 = cache6;
+      _cache7 = cache7;
+      _cache8 = cache8;
+      _cache9 = cache9;
+      _cache10 = cache10;
+    }
+  
+    public ref TComponent Add<TComponent>() where TComponent : struct, IValueComponent
+    {
+      _world.NewTransaction<TComponent>(_entityId, true);
+
+      var typeIndex = ComponentTypeInfo<TComponent>.Index;
+      if (!_world.ComponentCachesByTypeId.ContainsKey(typeIndex))
+        _world.ComponentCachesByTypeId[typeIndex] = new ComponentCache<TComponent>();
+      
+      return ref ((ComponentCache<TComponent>) _world.ComponentCachesByTypeId[ComponentTypeInfo<TComponent>.Index])
+        .Add(_entityId);
+    }
+
+    public void Remove<TComponent>() where TComponent : struct, IEcsBaseComponent
+    {
+      _world.ComponentCachesByTypeId[ComponentTypeInfo<TComponent>.Index].FreeId(_entityId);
+      _world.NewTransaction<TComponent>(_entityId, false);
+    }
+    
+    public void Tag<TTag>() where TTag : struct, ITagComponent
+    {
+      _world.NewTransaction<TTag>(_entityId, true);
+    }
+    
+    public void Untag<TTag>() where TTag : struct, ITagComponent
+    {
+      _world.NewTransaction<TTag>(_entityId, false);
+    }
+  }
+}

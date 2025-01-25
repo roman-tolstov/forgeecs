@@ -1,0 +1,313 @@
+﻿<#@ template language="C#" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+namespace ForgeECS
+{
+  public readonly struct Entities
+  {
+    private readonly FilterData _data;
+
+    public Entities(World world)
+    {
+      _data = new FilterData(world);
+    }
+
+    public readonly void AddArchetypeIfFits(Archetype archetype) =>
+      _data.AddArchetypeIfFits(archetype);
+    
+<# 
+    for(var with = 0; with < 6; with++)
+    {
+#>
+<#= With(with + 1, "Entities") #>
+<#= Where(1, with + 1, 0,"Entities") #>
+<#  
+    }
+#>
+  }
+}
+
+<#+
+    private string With(int generics, string baseType)
+    {
+        const string outerIndent = "    ";
+        const string declarationIndent = "      ";
+        const string methodIndent = "        ";
+
+        var genericsStr = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            if (i == 0)
+            genericsStr += $"T{i + 1}W";
+            else
+            genericsStr += $", T{i + 1}W";
+        }
+
+        var constraints = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            constraints += $"{declarationIndent}where T{i + 1}W : struct, IValueComponent\n";
+        }
+
+        var cacheCreations = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            cacheCreations += $"{declarationIndent}private readonly ComponentCache<T{i + 1}W> _cache{i + 1};\n";
+        }
+        
+        var cachesListToEnumerator = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            cachesListToEnumerator += $", _cache{i + 1}";
+        }
+
+        var cacheInitializations = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            cacheInitializations += $"{methodIndent}_cache{i + 1} = ComponentCache<T{i + 1}W>.From(world);\n";
+        }
+
+        var nestedTypes = string.Empty;
+        for (int i = 0; i < 6; i++)
+        {
+            nestedTypes += Where(2, i + 1, generics,$"With<{genericsStr}>");
+            nestedTypes += Any(2, i + 1, generics, $"With<{genericsStr}>");
+            nestedTypes += Without(2, i + 1, generics, $"With<{genericsStr}>");
+        }
+
+        return outerIndent + $"public struct With<{genericsStr}> : IAddArchetypeIfFits\n"
+               + constraints
+               + outerIndent + "{\n"
+               + declarationIndent + $"private readonly {baseType} _base;\n"
+               + cacheCreations
+               + declarationIndent + "public readonly void AddArchetypeIfFits(Archetype archetype) => _base.AddArchetypeIfFits(archetype);\n"
+               + declarationIndent + $"public readonly FilterEnumerator<{genericsStr}> GetEnumerator() => new (_base._data.World, _base._data.Archetypes{cachesListToEnumerator});\n"
+               + declarationIndent + "public With(World world)\n"
+               + declarationIndent + "{\n"
+               + methodIndent + "_base = new Entities(world);\n"
+               + cacheInitializations
+               + methodIndent + $"_base._data.SetWith<{genericsStr}>();\n"
+               + declarationIndent + "}\n"
+               + $"{nestedTypes}"
+               + outerIndent + "}\n";
+    }
+    private string Where(int depthLevel, int generics, int enumeratorGenericsNumber, string baseType)
+    {
+        var outerIndent = "  ";
+        var declarationIndent = "    ";
+        var methodIndent = "      ";
+        for (int i = 0; i < depthLevel; i++)
+        {
+            outerIndent += "  ";
+            declarationIndent += "  ";
+            methodIndent += "  ";
+        }
+
+        var genericsStr = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            if (i == 0)
+            genericsStr += $"T{i + 1}Where";
+            else
+            genericsStr += $", T{i + 1}Where";
+        }
+
+        var constraints = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            constraints += $"{declarationIndent}where T{i + 1}Where : struct, ITagComponent\n";
+        }
+
+        var enumeratorGenerics = string.Empty;
+        if (enumeratorGenericsNumber == 0)
+        {
+            enumeratorGenerics = "NoValue";
+        }
+        else
+        {
+            enumeratorGenerics += "<";
+            for (int i = 0; i < enumeratorGenericsNumber; i++)
+            {
+                if (i == 0)
+                    enumeratorGenerics += $"T{i + 1}W";
+                else
+                    enumeratorGenerics += $", T{i + 1}W";
+            }
+            enumeratorGenerics += ">";
+        }
+        
+        var enumeratorCreation = depthLevel == 1
+            ? "new(_base._data.World, _base._data.Archetypes)"
+            : "_base.GetEnumerator()";
+            
+        var typeToSetOn = string.Empty;
+        for (int i = 0; i < depthLevel; i++)
+        {
+            typeToSetOn += "_base.";
+        }
+
+        var nestedTypes = string.Empty;
+        for (int i = 0; i < 6; i++)
+        {
+            nestedTypes += Any(depthLevel + 1, i + 1, enumeratorGenericsNumber,$"Where<{genericsStr}>");
+            nestedTypes += Without(depthLevel + 1, i + 1, enumeratorGenericsNumber, $"Where<{genericsStr}>");
+        }
+        
+        return outerIndent + $"public struct Where<{genericsStr}> : IAddArchetypeIfFits\n"
+               + constraints
+               + outerIndent + "{\n"
+               + declarationIndent + $"private readonly {baseType} _base;\n"
+               + declarationIndent + "public readonly void AddArchetypeIfFits(Archetype archetype) => _base.AddArchetypeIfFits(archetype);\n"
+               + declarationIndent + $"public readonly FilterEnumerator{enumeratorGenerics} GetEnumerator() => {enumeratorCreation};\n"
+               + declarationIndent + "public Where(World world)\n"
+               + declarationIndent + "{\n"
+               + methodIndent + $"_base = new {baseType}(world);\n"
+               + methodIndent + $"{typeToSetOn}_data.SetWith<{genericsStr}>();\n"
+               + declarationIndent + "}\n"
+               + $"{nestedTypes}"
+               + outerIndent + "}\n";
+    }
+    private string Any(int depthLevel, int generics, int enumeratorGenericsNumber, string baseType)
+    {
+        var outerIndent = "  ";
+        var declarationIndent = "    ";
+        var methodIndent = "      ";
+        for (int i = 0; i < depthLevel; i++)
+        {
+            outerIndent += "  ";
+            declarationIndent += "  ";
+            methodIndent += "  ";
+        }
+
+        var genericsStr = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            if (i == 0)
+            genericsStr += $"T{i + 1}Any";
+            else
+            genericsStr += $", T{i + 1}Any";
+        }
+
+        var constraints = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            constraints += $"{declarationIndent}where T{i + 1}Any : struct, IEcsBaseComponent\n";
+        }
+
+        var enumeratorGenerics = string.Empty;
+        if (enumeratorGenericsNumber == 0)
+        {
+            enumeratorGenerics = "NoValue";
+        }
+        else
+        {
+            enumeratorGenerics += "<";
+            for (int i = 0; i < enumeratorGenericsNumber; i++)
+            {
+                if (i == 0)
+                    enumeratorGenerics += $"T{i + 1}W";
+                else
+                    enumeratorGenerics += $", T{i + 1}W";
+            }
+            enumeratorGenerics += ">";
+        }
+        
+        var enumeratorCreation = depthLevel == 1
+            ? "new(_base._data.World, _base._data.Archetypes);"
+            : "_base.GetEnumerator()";
+            
+        var typeToSetOn = string.Empty;
+        for (int i = 0; i < depthLevel; i++)
+        {
+            typeToSetOn += "_base.";
+        }
+
+        var nestedTypes = string.Empty;
+        for (int i = 0; i < 6; i++)
+        {
+            nestedTypes += Without(depthLevel + 1, i + 1, enumeratorGenericsNumber, $"WithAny<{genericsStr}>");
+        }
+        
+        return outerIndent + $"public struct WithAny<{genericsStr}> : IAddArchetypeIfFits\n"
+               + constraints
+               + outerIndent + "{\n"
+               + declarationIndent + $"private readonly {baseType} _base;\n"
+               + declarationIndent + "public readonly void AddArchetypeIfFits(Archetype archetype) => _base.AddArchetypeIfFits(archetype);\n"
+               + declarationIndent + $"public readonly FilterEnumerator{enumeratorGenerics} GetEnumerator() => {enumeratorCreation};\n"
+               + declarationIndent + "public WithAny(World world)\n"
+               + declarationIndent + "{\n"
+               + methodIndent + $"_base = new {baseType}(world);\n"
+               + methodIndent + $"{typeToSetOn}_data.SetAny<{genericsStr}>();\n"
+               + declarationIndent + "}\n"
+               + $"{nestedTypes}"
+               + outerIndent + "}\n";
+    }    
+    private string Without(int depthLevel, int generics, int enumeratorGenericsNumber, string baseType)
+    {
+        var outerIndent = "  ";
+        var declarationIndent = "    ";
+        var methodIndent = "      ";
+        for (int i = 0; i < depthLevel; i++)
+        {
+            outerIndent += "  ";
+            declarationIndent += "  ";
+            methodIndent += "  ";
+        }
+
+        var genericsStr = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            if (i == 0)
+            genericsStr += $"T{i + 1}Without";
+            else
+            genericsStr += $", T{i + 1}Without";
+        }
+
+        var constraints = string.Empty;
+        for (int i = 0; i < generics; i++)
+        {
+            constraints += $"{declarationIndent}where T{i + 1}Without : struct, IEcsBaseComponent\n";
+        }
+
+        var enumeratorGenerics = string.Empty;
+        if (enumeratorGenericsNumber == 0)
+        {
+            enumeratorGenerics = "NoValue";
+        }
+        else
+        {
+            enumeratorGenerics += "<";
+            for (int i = 0; i < enumeratorGenericsNumber; i++)
+            {
+                if (i == 0)
+                    enumeratorGenerics += $"T{i + 1}W";
+                else
+                    enumeratorGenerics += $", T{i + 1}W";
+            }
+            enumeratorGenerics += ">";
+        }
+        
+        var enumeratorCreation = depthLevel == 1
+            ? "new(_base._data.World, _base._data.Archetypes);"
+            : "_base.GetEnumerator()";
+            
+        var typeToSetOn = string.Empty;
+        for (int i = 0; i < depthLevel; i++)
+        {
+            typeToSetOn += "_base.";
+        }
+
+        return outerIndent + $"public struct Without<{genericsStr}> : IAddArchetypeIfFits\n"
+               + constraints
+               + outerIndent + "{\n"
+               + declarationIndent + $"private readonly {baseType} _base;\n"
+               + declarationIndent + "public readonly void AddArchetypeIfFits(Archetype archetype) => _base.AddArchetypeIfFits(archetype);\n"
+               + declarationIndent + $"public readonly FilterEnumerator{enumeratorGenerics} GetEnumerator() => {enumeratorCreation};\n"
+               + declarationIndent + "public Without(World world)\n"
+               + declarationIndent + "{\n"
+               + methodIndent + $"_base = new {baseType}(world);\n"
+               + methodIndent + $"{typeToSetOn}_data.SetWithout<{genericsStr}>();\n"
+               + declarationIndent + "}\n"
+               + outerIndent + "}\n";
+    }
+#>
