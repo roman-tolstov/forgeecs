@@ -45,6 +45,9 @@ if (sealedEntity.GetIfAlive(out var entity))
   entity.Tag<CIsWalking>();
   ...
 ```
+or just ```sealedEntity.Unseal```, which is slighlty less safe
+
+
 
 ### 🛅 Component
 is a unit of data, defines entity state
