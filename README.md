@@ -9,7 +9,7 @@
 * No code generation  ✔️
 * Foolproof component getter ✔️
 
-## Why this
+## Motivation
 The framework was created to fulfil the wishes for a no-setup solution, that would have a rather minimalistic look without code generation, while providing a reliable component getter and decent perfomance.
  
 ## Overview
@@ -167,6 +167,8 @@ is performed by reflection at system creation/startup
 
 * for custom type fields with InjectBySystem attribute
 
+## Demo
+[Simple tank game](https://github.com/roman-tolstov/ForgeEcsDemo)
 # Contact info
 
 ✉️ tolstovgamedev@gmail.com
