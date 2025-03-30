@@ -168,7 +168,7 @@ is performed by reflection at system creation/startup
 * for custom type fields with InjectBySystem attribute
 
 ## Demo
-[Simple tank game](https://github.com/roman-tolstov/ForgeEcsDemo)
+[A simple tank game](https://github.com/roman-tolstov/ForgeEcsDemo)
 # Contact info
 
 ✉️ tolstovgamedev@gmail.com
